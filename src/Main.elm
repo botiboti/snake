@@ -18,6 +18,12 @@ main =
         }
 
 
+type alias Backbone =
+    { x : Int
+    , y : Int
+    }
+
+
 type Direction
     = Up
     | Left
@@ -27,14 +33,11 @@ type Direction
 
 
 type alias Snake =
-    { hungry : Bool
-    , size : Int
-    }
+    List Backbone
 
 
 type alias Game =
     { snake : Snake
-    , keys : List String
     , direction : Direction
     , gameOver : Bool
     }
@@ -42,15 +45,12 @@ type alias Game =
 
 initSnake : Snake
 initSnake =
-    { hungry = True
-    , size = 3
-    }
+    []
 
 
 initGame : Game
 initGame =
     { snake = initSnake
-    , keys = []
     , direction = Right
     , gameOver = False
     }
@@ -77,7 +77,7 @@ update msg game =
             ( game, Cmd.none )
 
         KeyDowns dir ->
-            ( { game | keys = game.keys ++ [ Debug.toString dir ] }, Cmd.none )
+            ( game, Cmd.none )
 
 
 subscriptions : Game -> Sub Msg
@@ -114,7 +114,4 @@ toDirection string =
 
 view : Game -> Html Msg
 view game =
-    div [] <|
-        List.map
-            (\x -> div [] [ text x ])
-            game.keys
+    div [] []
