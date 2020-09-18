@@ -1,12 +1,19 @@
 module Main exposing (..)
 
+--import Html.Attributes exposing (height, width)
+
 import Browser
 import Browser.Events as Events
+import Color
 import Debug
 import Dict exposing (keys)
 import Html exposing (..)
 import Json.Decode as Decode
 import Time exposing (..)
+import TypedSvg exposing (..)
+import TypedSvg.Attributes exposing (..)
+import TypedSvg.Core exposing (..)
+import TypedSvg.Types exposing (..)
 
 
 main =
@@ -40,6 +47,7 @@ type alias Game =
     { snake : Snake
     , direction : Direction
     , gameOver : Bool
+    , needsFood : Bool
     }
 
 
@@ -53,6 +61,7 @@ initGame =
     { snake = initSnake
     , direction = Right
     , gameOver = False
+    , needsFood = True
     }
 
 
@@ -62,17 +71,13 @@ init () =
 
 
 type Msg
-    = DirectionChange Direction
-    | Tick Time.Posix
+    = Tick Time.Posix
     | KeyDowns Direction
 
 
 update : Msg -> Game -> ( Game, Cmd Msg )
 update msg game =
     case msg of
-        DirectionChange dir ->
-            ( game, Cmd.none )
-
         Tick time ->
             ( game, Cmd.none )
 
@@ -112,6 +117,74 @@ toDirection string =
             Other
 
 
+bg : Svg msg
+bg =
+    rect
+        [ x (percent 0.0)
+        , y (percent 0.0)
+        , width (percent 60.0)
+        , height (percent 60.0)
+        , fill (Paint <| Color.rgb 0.6 0.6 0.6)
+        ]
+        []
+
+
+borders : List (Svg msg)
+borders =
+    [ rect
+        [ x (percent 0.0)
+        , y (percent 0.0)
+        , width (percent 60.0)
+        , height (percent 1.0)
+        , fill (Paint <| Color.rgb 0.0 1.0 0.5)
+        ]
+        []
+    , rect
+        [ x (percent 0.0)
+        , y (percent 0.0)
+        , width (percent 1.0)
+        , height (percent 60.0)
+        , fill (Paint <| Color.rgb 0.0 1.0 0.5)
+        ]
+        []
+    , rect
+        [ x (percent 59.0)
+        , y (percent 0.0)
+        , width (percent 1.0)
+        , height (percent 60.0)
+        , fill (Paint <| Color.rgb 0.0 1.0 0.5)
+        ]
+        []
+    , rect
+        [ x (percent 0.0)
+        , y (percent 59.0)
+        , width (percent 60.0)
+        , height (percent 1.0)
+        , fill (Paint <| Color.rgb 0.0 1.0 0.5)
+        ]
+        []
+    ]
+
+
+bone : Svg msg
+bone =
+    rect
+        [ x (percent 20.0)
+        , y (percent 20.0)
+        , width (percent 1.0)
+        , height (percent 1.0)
+        , fill (Paint <| Color.rgb 1.0 0.0 0.0)
+        ]
+        []
+
+
 view : Game -> Html Msg
 view game =
-    div [] []
+    svg
+        [ viewBox 0 0 10 10 ]
+    <|
+        List.append
+            [ bg
+            , bone
+            ]
+            borders
