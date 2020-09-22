@@ -2,7 +2,7 @@ module Game exposing (..)
 
 import Browser.Events as Events
 import Debug
-import Dict exposing (keys)
+import Dict exposing (intersect, keys)
 import Html exposing (..)
 import Json.Decode as Decode
 import List.Extra as LE
@@ -27,8 +27,7 @@ type alias Game =
     { snake : Snake
     , direction : Direction
     , gameOver : Bool
-    , needsFood : Bool
-    , apple : Backbone
+    , apple : Maybe Backbone
     }
 
 
@@ -37,14 +36,13 @@ initGame =
     { snake = initSnake
     , direction = Right
     , gameOver = False
-    , needsFood = True
-    , apple = { x = 10, y = 10 }
+    , apple = Just (Backbone 0 0)
     }
 
 
 init : () -> ( Game, Cmd Msg )
 init () =
-    ( initGame, Cmd.none )
+    ( initGame, Random.generate Spawn apple )
 
 
 type Msg
@@ -57,31 +55,52 @@ update : Msg -> Game -> ( Game, Cmd Msg )
 update msg game =
     case msg of
         Tick time ->
-            ( { snake = updateSnake game game.direction
-              , direction = game.direction
-              , gameOver = game.gameOver
-              , needsFood = game.needsFood
-              , apple = game.apple
-              }
-            , if game.needsFood then
-                Random.generate Spawn apple
+            if gameOver game game.direction then
+                init ()
 
-              else
-                Cmd.none
-            )
+            else
+                ( { snake = updateSnake game game.direction
+                  , direction = game.direction
+                  , gameOver = game.gameOver
+                  , apple = checkApple game
+                  }
+                , case checkApple game of
+                    Nothing ->
+                        Random.generate Spawn apple
+
+                    _ ->
+                        Cmd.none
+                )
 
         KeyDowns dir ->
-            ( { snake = updateSnake game dir
-              , direction = dir
-              , gameOver = game.gameOver
-              , needsFood = game.needsFood
-              , apple = game.apple
-              }
-            , Cmd.none
-            )
+            if gameOver game dir then
+                init ()
+
+            else
+                ( { snake = updateSnake game dir
+                  , direction = updateDir game dir
+                  , gameOver = game.gameOver
+                  , apple = checkApple game
+                  }
+                , case checkApple game of
+                    Nothing ->
+                        Random.generate Spawn apple
+
+                    _ ->
+                        Cmd.none
+                )
 
         Spawn bb ->
-            ( { game | apple = bb }, Cmd.none )
+            ( { game | apple = Just bb }, Cmd.none )
+
+
+checkApple : Game -> Maybe Backbone
+checkApple game =
+    if intersecting (List.head game.snake) game.apple then
+        Nothing
+
+    else
+        game.apple
 
 
 apple : Random.Generator Backbone
@@ -92,25 +111,101 @@ apple =
         (Random.int 1 58)
 
 
+updateDir : Game -> Direction -> Direction
+updateDir game dir =
+    if game.direction == dir || game.direction == oppositeDirection dir then
+        game.direction
+
+    else
+        dir
+
+
+intersecting : Maybe Backbone -> Maybe Backbone -> Bool
+intersecting b1 b2 =
+    case ( b1, b2 ) of
+        ( Just first, Just second ) ->
+            first.x == second.x && first.y == second.y
+
+        _ ->
+            False
+
+
+growSnake : Game -> Snake
+growSnake game =
+    case List.head game.snake of
+        Just head ->
+            case game.direction of
+                Up ->
+                    case LE.last game.snake of
+                        Just t ->
+                            game.snake ++ [ { t | y = t.y + 1 } ]
+
+                        Nothing ->
+                            game.snake
+
+                Down ->
+                    case LE.last game.snake of
+                        Just t ->
+                            game.snake ++ [ { t | y = t.y - 1 } ]
+
+                        Nothing ->
+                            game.snake
+
+                Left ->
+                    case LE.last game.snake of
+                        Just t ->
+                            game.snake ++ [ { t | x = t.x + 1 } ]
+
+                        Nothing ->
+                            game.snake
+
+                Right ->
+                    case LE.last game.snake of
+                        Just t ->
+                            game.snake ++ [ { t | x = t.x - 1 } ]
+
+                        Nothing ->
+                            game.snake
+
+                _ ->
+                    game.snake
+
+        Nothing ->
+            game.snake
+
+
 updateSnake : Game -> Direction -> Snake
-updateSnake game new_dir =
+updateSnake game dir =
+    if intersecting (List.head game.snake) game.apple then
+        newSnakePos { game | snake = growSnake game } dir
+
+    else
+        newSnakePos game dir
+
+
+newSnakePos : Game -> Direction -> Snake
+newSnakePos game new_dir =
+    {-
+       if direction is the same or the opposite of the current direction
+       it remains the same
+    -}
     if game.direction == new_dir || game.direction == oppositeDirection new_dir then
-        sameDirection game
+        changeDirection game game.direction
 
     else
         changeDirection game new_dir
 
 
-sameDirection : Game -> Snake
-sameDirection game =
-    case game.direction of
+changeDirection : Game -> Direction -> Snake
+changeDirection game dir =
+    case dir of
         Up ->
             case ( List.head game.snake, LE.init game.snake ) of
                 ( Just head, Just body ) ->
                     { head | y = head.y - 1 } :: body
 
                 _ ->
-                    initSnake
+                    game.snake
 
         Left ->
             case ( List.head game.snake, LE.init game.snake ) of
@@ -118,7 +213,7 @@ sameDirection game =
                     { head | x = head.x - 1 } :: body
 
                 _ ->
-                    initSnake
+                    game.snake
 
         Down ->
             case ( List.head game.snake, LE.init game.snake ) of
@@ -126,7 +221,7 @@ sameDirection game =
                     { head | y = head.y + 1 } :: body
 
                 _ ->
-                    initSnake
+                    game.snake
 
         Right ->
             case ( List.head game.snake, LE.init game.snake ) of
@@ -134,53 +229,57 @@ sameDirection game =
                     { head | x = head.x + 1 } :: body
 
                 _ ->
-                    initSnake
+                    game.snake
 
         _ ->
-            initSnake
+            game.snake
 
 
-changeDirection : Game -> Direction -> Snake
-changeDirection game dir =
-    if game.direction == oppositeDirection dir then
-        sameDirection game
+gameOver : Game -> Direction -> Bool
+gameOver game dir =
+    collisionBorder game || bitingTail game dir
 
-    else
-        case dir of
-            Up ->
-                case ( List.head game.snake, LE.init game.snake ) of
-                    ( Just head, Just body ) ->
-                        { head | y = head.y - 1 } :: body
 
-                    _ ->
-                        initSnake
+collisionBorder : Game -> Bool
+collisionBorder game =
+    let
+        head =
+            List.head game.snake
+    in
+    case head of
+        Just bb ->
+            case ( bb.x, bb.y ) of
+                ( 0, _ ) ->
+                    True
 
-            Left ->
-                case ( List.head game.snake, LE.init game.snake ) of
-                    ( Just head, Just body ) ->
-                        { head | x = head.x - 1 } :: body
+                ( 59, _ ) ->
+                    True
 
-                    _ ->
-                        initSnake
+                ( _, 0 ) ->
+                    True
 
-            Down ->
-                case ( List.head game.snake, LE.init game.snake ) of
-                    ( Just head, Just body ) ->
-                        { head | y = head.y + 1 } :: body
+                ( _, 59 ) ->
+                    True
 
-                    _ ->
-                        initSnake
+                _ ->
+                    False
 
-            Right ->
-                case ( List.head game.snake, LE.init game.snake ) of
-                    ( Just head, Just body ) ->
-                        { head | x = head.x + 1 } :: body
+        Nothing ->
+            True
 
-                    _ ->
-                        initSnake
 
-            _ ->
-                initSnake
+bitingTail : Game -> Direction -> Bool
+bitingTail game dir =
+    let
+        head =
+            List.head game.snake
+    in
+    case List.tail game.snake of
+        Just tail ->
+            List.any (\x -> intersecting head (Just x)) tail
+
+        Nothing ->
+            True
 
 
 subscriptions : Game -> Sub Msg

@@ -78,6 +78,16 @@ drawSnake snake =
     List.map (\bb -> drawBone 100 100 100 bb) snake
 
 
+drawApple : Maybe Backbone -> List (Svg msg)
+drawApple apple =
+    case apple of
+        Just app ->
+            [ drawBone 100 0 0 app ]
+
+        Nothing ->
+            []
+
+
 view : Game -> Html Msg
 view game =
     svg
@@ -85,5 +95,5 @@ view game =
     <|
         [ bg ]
             ++ drawSnake game.snake
-            ++ [ drawBone 100 0 0 game.apple ]
+            ++ drawApple game.apple
             ++ borders

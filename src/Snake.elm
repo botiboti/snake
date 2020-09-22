@@ -3,9 +3,9 @@ module Snake exposing (..)
 
 initSnake : Snake
 initSnake =
-    [ { x = 7, y = 5 }
-    , { x = 6, y = 5 }
-    , { x = 5, y = 5 }
+    [ Backbone 7 5
+    , Backbone 6 5
+    , Backbone 5 5
     ]
 
 
