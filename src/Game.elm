@@ -6,6 +6,7 @@ import Dict exposing (keys)
 import Html exposing (..)
 import Json.Decode as Decode
 import List.Extra as LE
+import Random
 import Snake exposing (..)
 import Time exposing (..)
 import TypedSvg exposing (..)
@@ -27,6 +28,7 @@ type alias Game =
     , direction : Direction
     , gameOver : Bool
     , needsFood : Bool
+    , apple : Backbone
     }
 
 
@@ -36,6 +38,7 @@ initGame =
     , direction = Right
     , gameOver = False
     , needsFood = True
+    , apple = { x = 10, y = 10 }
     }
 
 
@@ -47,21 +50,51 @@ init () =
 type Msg
     = Tick Time.Posix
     | KeyDowns Direction
+    | Spawn Backbone
 
 
 update : Msg -> Game -> ( Game, Cmd Msg )
 update msg game =
     case msg of
         Tick time ->
-            ( game, Cmd.none )
+            ( { snake = updateSnake game game.direction
+              , direction = game.direction
+              , gameOver = game.gameOver
+              , needsFood = game.needsFood
+              , apple = game.apple
+              }
+            , if game.needsFood then
+                Random.generate Spawn apple
+
+              else
+                Cmd.none
+            )
 
         KeyDowns dir ->
-            ( { game | snake = newSnake game dir }, Cmd.none )
+            ( { snake = updateSnake game dir
+              , direction = dir
+              , gameOver = game.gameOver
+              , needsFood = game.needsFood
+              , apple = game.apple
+              }
+            , Cmd.none
+            )
+
+        Spawn bb ->
+            ( { game | apple = bb }, Cmd.none )
 
 
-newSnake : Game -> Direction -> Snake
-newSnake game new_dir =
-    if game.direction == new_dir then
+apple : Random.Generator Backbone
+apple =
+    Random.map2
+        (\x y -> Backbone x y)
+        (Random.int 1 58)
+        (Random.int 1 58)
+
+
+updateSnake : Game -> Direction -> Snake
+updateSnake game new_dir =
+    if game.direction == new_dir || game.direction == oppositeDirection new_dir then
         sameDirection game
 
     else
@@ -109,46 +142,45 @@ sameDirection game =
 
 changeDirection : Game -> Direction -> Snake
 changeDirection game dir =
-    case dir of
-        Up ->
-            case ( List.head game.snake, LE.init game.snake ) of
-                ( Just head, Just body ) ->
-                    { head | y = head.y - 1 } :: body
+    if game.direction == oppositeDirection dir then
+        sameDirection game
 
-                _ ->
-                    initSnake
+    else
+        case dir of
+            Up ->
+                case ( List.head game.snake, LE.init game.snake ) of
+                    ( Just head, Just body ) ->
+                        { head | y = head.y - 1 } :: body
 
-        Left ->
-            case ( List.head game.snake, LE.init game.snake ) of
-                ( Just head, Just body ) ->
-                    { head | x = head.x - 1 } :: body
+                    _ ->
+                        initSnake
 
-                _ ->
-                    initSnake
+            Left ->
+                case ( List.head game.snake, LE.init game.snake ) of
+                    ( Just head, Just body ) ->
+                        { head | x = head.x - 1 } :: body
 
-        Down ->
-            case ( List.head game.snake, LE.init game.snake ) of
-                ( Just head, Just body ) ->
-                    { head | y = head.y + 1 } :: body
+                    _ ->
+                        initSnake
 
-                _ ->
-                    initSnake
+            Down ->
+                case ( List.head game.snake, LE.init game.snake ) of
+                    ( Just head, Just body ) ->
+                        { head | y = head.y + 1 } :: body
 
-        Right ->
-            case ( List.head game.snake, LE.init game.snake ) of
-                ( Just head, Just body ) ->
-                    { head | x = head.x + 1 } :: body
+                    _ ->
+                        initSnake
 
-                _ ->
-                    initSnake
+            Right ->
+                case ( List.head game.snake, LE.init game.snake ) of
+                    ( Just head, Just body ) ->
+                        { head | x = head.x + 1 } :: body
 
-        _ ->
-            initSnake
+                    _ ->
+                        initSnake
 
-
-spawnFood : Game -> Game
-spawnFood game =
-    game
+            _ ->
+                initSnake
 
 
 subscriptions : Game -> Sub Msg

@@ -50,18 +50,18 @@ borders =
                 ]
                 []
     in
-    [ bord 0 0 60 1
-    , bord 0 0 1 60
-    , bord 0 59 60 1
-    , bord 59 0 1 60
+    [ bord 0.0 0.0 60.0 1.0
+    , bord 0.0 0.0 1.0 60.0
+    , bord 0.0 59.0 60.0 1.0
+    , bord 59.0 0.0 1.0 60.0
     ]
 
 
-drawBone : Backbone -> Svg msg
-drawBone bb =
+drawBone : Int -> Int -> Int -> Backbone -> Svg msg
+drawBone r g b bb =
     let
         col =
-            rgb_oz 100 100 100
+            rgb_oz r g b
     in
     rect
         [ x (px <| toFloat <| bb.x)
@@ -75,14 +75,15 @@ drawBone bb =
 
 drawSnake : Snake -> List (Svg msg)
 drawSnake snake =
-    List.map (\bb -> drawBone bb) snake
+    List.map (\bb -> drawBone 100 100 100 bb) snake
 
 
 view : Game -> Html Msg
 view game =
     svg
-        [ viewBox 0 0 100 100 ]
+        [ viewBox -1 -1 100 100 ]
     <|
         [ bg ]
-            ++ borders
             ++ drawSnake game.snake
+            ++ [ drawBone 100 0 0 game.apple ]
+            ++ borders
