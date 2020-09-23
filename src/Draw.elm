@@ -1,6 +1,7 @@
 module Draw exposing (..)
 
 import Color
+import Debug
 import Game exposing (..)
 import Html exposing (..)
 import Snake exposing (..)
@@ -90,10 +91,13 @@ drawApple apple =
 
 view : Game -> Html Msg
 view game =
-    svg
-        [ viewBox -1 -1 100 100 ]
-    <|
-        [ bg ]
-            ++ drawSnake game.snake
-            ++ drawApple game.apple
-            ++ borders
+    div [] <|
+        [ Html.text <| "Score: " ++ (Debug.toString <| List.length game.snake) ]
+            ++ [ svg
+                    [ viewBox -1 -1 100 100 ]
+                 <|
+                    [ bg ]
+                        ++ drawSnake game.snake
+                        ++ drawApple game.apple
+                        ++ borders
+               ]
