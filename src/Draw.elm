@@ -3,6 +3,7 @@ module Draw exposing (..)
 import Color
 import Game exposing (..)
 import Html exposing (..)
+import Html.Attributes
 import Snake exposing (..)
 import TypedSvg exposing (..)
 import TypedSvg.Attributes exposing (..)
@@ -89,7 +90,7 @@ view model =
         |> Maybe.map
             (\game ->
                 svg
-                    [ viewBox -1 -1 100 100 ]
+                    [ viewBox 0 0 60 60, Html.Attributes.style "width" "400px" ]
                 <|
                     [ bg ]
                         ++ drawSnake game.snake
