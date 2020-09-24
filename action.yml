@@ -1,0 +1,3 @@
+steps:
+- uses: justgook/setup-elm@1.2.0
+- run: elm make src/Main.elm
