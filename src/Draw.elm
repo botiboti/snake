@@ -78,14 +78,9 @@ drawSnake snake =
     List.map (\bb -> drawBone 100 100 100 bb) snake
 
 
-drawApple : Maybe Coord -> List (Svg msg)
+drawApple : Coord -> List (Svg msg)
 drawApple apple =
-    case apple of
-        Just app ->
-            [ drawBone 100 0 0 app ]
-
-        Nothing ->
-            []
+    [ drawBone 100 0 0 apple ]
 
 
 view : Game -> Html Msg
