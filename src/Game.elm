@@ -1,11 +1,11 @@
 module Game exposing (..)
 
 import Browser.Events as Events
-import Dict exposing (intersect, keys)
+import Dict exposing (keys)
 import Html exposing (..)
 import Json.Decode as Decode
 import List.Extra as LE
-import Random
+import Random exposing (generate)
 import Snake exposing (..)
 import Time exposing (..)
 import TypedSvg exposing (..)
@@ -19,7 +19,6 @@ type Direction
     | Left
     | Down
     | Right
-    | Other
 
 
 type alias Game =
@@ -53,15 +52,14 @@ type Msg
 update : Msg -> Game -> ( Game, Cmd Msg )
 update msg game =
     case msg of
-        Tick time ->
-            if gameOver game game.direction then
+        Tick _ ->
+            if gameOver game then
                 init ()
 
             else
-                ( { snake = updateSnake game game.direction
-                  , direction = game.direction
-                  , gameOver = game.gameOver
-                  , apple = eatingApple game
+                ( { game
+                    | snake = updateSnake game game.direction
+                    , apple = eatingApple game
                   }
                 , case eatingApple game of
                     Nothing ->
@@ -72,10 +70,10 @@ update msg game =
                 )
 
         KeyDowns dir ->
-            ( { snake = updateSnake game dir
-              , direction = updateDir game dir
-              , gameOver = game.gameOver
-              , apple = eatingApple game
+            ( { game
+                | snake = updateSnake game dir
+                , direction = updateDir game.direction dir
+                , apple = eatingApple game
               }
             , case eatingApple game of
                 Nothing ->
@@ -91,7 +89,7 @@ update msg game =
 
 eatingApple : Game -> Maybe Coord
 eatingApple game =
-    if intersecting (List.head game.snake) game.apple then
+    if List.head game.snake == game.apple then
         Nothing
 
     else
@@ -101,72 +99,62 @@ eatingApple game =
 apple : Random.Generator Coord
 apple =
     Random.map2
-        (\x y -> Coord x y)
+        Coord
         (Random.int 1 58)
         (Random.int 1 58)
 
 
-updateDir : Game -> Direction -> Direction
-updateDir game dir =
-    if game.direction == dir || game.direction == oppositeDirection dir then
-        game.direction
+updateDir : Direction -> Direction -> Direction
+updateDir dir old =
+    if old == dir || old == oppositeDirection dir then
+        old
 
     else
         dir
 
 
-intersecting : Maybe Coord -> Maybe Coord -> Bool
-intersecting b1 b2 =
-    case ( b1, b2 ) of
-        ( Just first_bone, Just second_bone ) ->
-            first_bone.x == second_bone.x && first_bone.y == second_bone.y
+adjacent : Direction -> Coord -> Coord
+adjacent dir coord =
+    case dir of
+        Up ->
+            { coord | y = coord.y + 1 }
 
-        _ ->
-            False
+        Left ->
+            { coord | x = coord.x - 1 }
+
+        Right ->
+            { coord | x = coord.x + 1 }
+
+        Down ->
+            { coord | y = coord.y - 1 }
 
 
 growSnake : Game -> Snake
 growSnake game =
-    case game.direction of
-        Up ->
-            case LE.last game.snake of
-                Just t ->
-                    game.snake ++ [ { t | y = t.y + 1 } ]
+    case LE.last game.snake of
+        Just t ->
+            game.snake ++ [ adjacent game.direction t ]
 
-                Nothing ->
-                    game.snake
-
-        Down ->
-            case LE.last game.snake of
-                Just t ->
-                    game.snake ++ [ { t | y = t.y - 1 } ]
-
-                Nothing ->
-                    game.snake
-
-        Left ->
-            case LE.last game.snake of
-                Just t ->
-                    game.snake ++ [ { t | x = t.x + 1 } ]
-
-                Nothing ->
-                    game.snake
-
-        Right ->
-            case LE.last game.snake of
-                Just t ->
-                    game.snake ++ [ { t | x = t.x - 1 } ]
-
-                Nothing ->
-                    game.snake
-
-        _ ->
+        Nothing ->
             game.snake
+
+
+doubleIfMoreThanTen : Maybe Int -> Maybe Int
+doubleIfMoreThanTen x =
+    x
+        |> Maybe.andThen
+            (\s ->
+                if s > 10 then
+                    Just (2 * s)
+
+                else
+                    Nothing
+            )
 
 
 updateSnake : Game -> Direction -> Snake
 updateSnake game dir =
-    if intersecting (List.head game.snake) game.apple then
+    if List.head game.snake == game.apple then
         newSnakePos { game | snake = growSnake game } dir
 
     else
@@ -217,64 +205,62 @@ changeDirection game dir =
                 _ ->
                     game.snake
 
-        _ ->
-            game.snake
 
-
-gameOver : Game -> Direction -> Bool
-gameOver game dir =
-    collisionBorder game || bitingTail game dir
+gameOver : Game -> Bool
+gameOver game =
+    collisionBorder game || bitingTail game
 
 
 collisionBorder : Game -> Bool
 collisionBorder game =
-    let
-        head =
-            Maybe.withDefault (Coord 0 0) (List.head game.snake)
-    in
-    head.x <= 0 || head.x >= 59 || head.y <= 0 || head.y >= 59
+    List.head game.snake
+        |> Maybe.map (\{ x, y } -> x <= 0 || x >= 59 || y <= 0 || y >= 59)
+        |> Maybe.withDefault False
 
 
-bitingTail : Game -> Direction -> Bool
-bitingTail game dir =
-    case List.tail game.snake of
-        Just tail ->
-            List.any (\x -> intersecting (List.head game.snake) (Just x)) tail
-
-        Nothing ->
-            True
+bitingTail : Game -> Bool
+bitingTail game =
+    List.tail game.snake
+        |> Maybe.map (List.any (\x -> List.head game.snake == Just x))
+        |> Maybe.withDefault False
 
 
-subscriptions : Game -> Sub Msg
-subscriptions game =
+subscriptions : a -> Sub Msg
+subscriptions _ =
     Sub.batch
         [ Time.every 500 Tick
-        , Events.onKeyDown (Decode.map KeyDowns keyDecoder)
+        , Events.onKeyDown (Decode.map KeyDowns decodeDirection)
         ]
 
 
-keyDecoder : Decode.Decoder Direction
-keyDecoder =
-    Decode.map toDirection (Decode.field "key" Decode.string)
+decodeDirection : Decode.Decoder Direction
+decodeDirection =
+    Decode.andThen
+        (\x ->
+            toDirection x
+                |> Maybe.map Decode.succeed
+                |> Maybe.withDefault (Decode.fail "invalid direction")
+        )
+        (Decode.field "key" Decode.string)
 
 
-toDirection : String -> Direction
+toDirection : String -> Maybe Direction
 toDirection string =
     case string of
         "ArrowUp" ->
-            Up
+            Just Up
 
         "ArrowLeft" ->
-            Left
+            Just Left
 
         "ArrowDown" ->
-            Down
+            Just Down
 
         "ArrowRight" ->
-            Right
+            Just Right
 
         _ ->
-            Other
+            Nothing
 
 
 oppositeDirection : Direction -> Direction
@@ -291,6 +277,3 @@ oppositeDirection dir =
 
         Right ->
             Left
-
-        Other ->
-            Other
