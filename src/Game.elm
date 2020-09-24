@@ -47,33 +47,35 @@ update msg model =
             )
 
         ( _, Just game ) ->
-            if gameOver game then
-                init ()
-
-            else
-                ( case msg of
-                    Tick _ ->
-                        Just (updateGame game.direction game)
-
+            ( updateGame
+                (case msg of
                     KeyDowns dir ->
-                        Just (updateGame dir game)
+                        dir
 
                     _ ->
-                        model
-                , Cmd.none
+                        game.direction
                 )
+                game
+            , Cmd.none
+            )
 
         _ ->
             init ()
 
 
-updateGame : Direction -> Game -> Game
+updateGame : Direction -> Game -> Maybe Game
 updateGame dir game =
-    { game
-        | snake = updateSnake dir game
-        , direction = updateDir dir game.direction
-    }
-        |> updateApple
+    if not <| gameOver game then
+        Just
+            (updateApple <|
+                { game
+                    | snake = updateSnake dir game
+                    , direction = updateDir dir game.direction
+                }
+            )
+
+    else
+        Nothing
 
 
 updateApple : Game -> Game
