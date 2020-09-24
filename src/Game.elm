@@ -25,6 +25,19 @@ init () =
     ( Nothing, Random.generate Seed Random.independentSeed )
 
 
+initGame : Random.Seed -> Game
+initGame seed =
+    let
+        ( apple, seed_ ) =
+            Random.step genCoord seed
+    in
+    { snake = initSnake
+    , direction = Right
+    , apple = apple
+    , seed = seed_
+    }
+
+
 type Msg
     = Tick Time.Posix
     | KeyDowns Direction
@@ -35,29 +48,19 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
         ( Seed seed, Nothing ) ->
-            ( Just
-                ({ snake = initSnake
-                 , direction = Right
-                 , apple = Coord 0 0
-                 , seed = seed
-                 }
-                    |> stepApple
-                )
-            , Cmd.none
-            )
+            ( Just (initGame seed), Cmd.none )
 
         ( _, Just game ) ->
-            ( updateGame
-                (case msg of
-                    KeyDowns dir ->
-                        dir
+            let
+                newDir =
+                    case msg of
+                        KeyDowns dir ->
+                            dir
 
-                    _ ->
-                        game.direction
-                )
-                game
-            , Cmd.none
-            )
+                        _ ->
+                            game.direction
+            in
+            ( updateGame newDir game, Cmd.none )
 
         _ ->
             init ()
