@@ -83,12 +83,17 @@ drawApple apple =
     [ drawBone 100 0 0 apple ]
 
 
-view : Game -> Html Msg
-view game =
-    svg
-        [ viewBox -1 -1 100 100 ]
-    <|
-        [ bg ]
-            ++ drawSnake game.snake
-            ++ drawApple game.apple
-            ++ borders
+view : Model -> Html Msg
+view model =
+    model
+        |> Maybe.map
+            (\game ->
+                svg
+                    [ viewBox -1 -1 100 100 ]
+                <|
+                    [ bg ]
+                        ++ drawSnake game.snake
+                        ++ drawApple game.apple
+                        ++ borders
+            )
+        |> Maybe.withDefault (Html.text "")

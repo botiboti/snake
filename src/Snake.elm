@@ -54,13 +54,6 @@ updateDir new old =
         new
 
 
-snakeInside : Snake -> Bool
-snakeInside snake =
-    List.head snake
-        |> Maybe.map inside
-        |> Maybe.withDefault False
-
-
 oppositeDirection : Direction -> Direction
 oppositeDirection dir =
     case dir of

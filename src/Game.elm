@@ -8,64 +8,80 @@ import Snake exposing (..)
 import Time exposing (..)
 
 
+type alias Model =
+    Maybe Game
+
+
 type alias Game =
     { snake : Snake
     , direction : Direction
     , apple : Coord
+    , seed : Random.Seed
     }
 
 
-initGame : Game
-initGame =
-    { snake = initSnake
-    , direction = Right
-    , apple = Coord 5 5
-    }
-
-
-init : () -> ( Game, Cmd Msg )
+init : () -> ( Model, Cmd Msg )
 init () =
-    ( initGame, Random.generate Spawn apple )
+    ( Nothing, Random.generate Seed Random.independentSeed )
 
 
 type Msg
     = Tick Time.Posix
     | KeyDowns Direction
-    | Spawn Coord
+    | Seed Random.Seed
 
 
-update : Msg -> Game -> ( Game, Cmd Msg )
-update msg game =
-    case msg of
-        Tick _ ->
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case ( msg, model ) of
+        ( Tick _, Just game ) ->
             if gameOver game then
                 init ()
 
             else
-                ( { game
-                    | snake = updateSnake game.direction game
-                  }
-                , if eatingApple game then
-                    Random.generate Spawn apple
-
-                  else
-                    Cmd.none
+                ( Just
+                    ({ game
+                        | snake = updateSnake game.direction game
+                     }
+                        |> updateApple
+                    )
+                , Cmd.none
                 )
 
-        KeyDowns dir ->
-            ( { game
-                | snake = updateSnake dir game
-                , direction = updateDir dir game.direction
-              }
-            , if eatingApple game then
-                Random.generate Spawn apple
-
-              else
-                Cmd.none
+        ( KeyDowns dir, Just game ) ->
+            ( Just
+                ({ game
+                    | snake = updateSnake dir game
+                    , direction = updateDir dir game.direction
+                 }
+                    |> updateApple
+                )
+            , Cmd.none
             )
 
-        Spawn coord ->
-            ( { game | apple = coord }, Cmd.none )
+        ( Seed seed, Nothing ) ->
+            ( Just
+                ({ snake = initSnake
+                 , direction = Right
+                 , apple = Coord 0 0
+                 , seed = seed
+                 }
+                    |> stepApple
+                )
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+updateApple : Game -> Game
+updateApple game =
+    if eatingApple game then
+        stepApple game
+
+    else
+        game
 
 
 eatingApple : Game -> Bool
@@ -73,8 +89,20 @@ eatingApple game =
     List.head game.snake == Just game.apple
 
 
-apple : Random.Generator Coord
-apple =
+stepApple : Game -> Game
+stepApple game =
+    let
+        ( apple, seed ) =
+            Random.step genCoord game.seed
+    in
+    { game
+        | apple = apple
+        , seed = seed
+    }
+
+
+genCoord : Random.Generator Coord
+genCoord =
     Random.map2
         Coord
         (Random.int 1 58)
@@ -114,6 +142,13 @@ bitingTail snake =
 inside : Coord -> Bool
 inside { x, y } =
     x <= 0 || x >= 59 || y <= 0 || y >= 59
+
+
+snakeInside : Snake -> Bool
+snakeInside snake =
+    List.head snake
+        |> Maybe.map inside
+        |> Maybe.withDefault False
 
 
 subscriptions : a -> Sub Msg
