@@ -139,19 +139,6 @@ growSnake game =
             game.snake
 
 
-doubleIfMoreThanTen : Maybe Int -> Maybe Int
-doubleIfMoreThanTen x =
-    x
-        |> Maybe.andThen
-            (\s ->
-                if s > 10 then
-                    Just (2 * s)
-
-                else
-                    Nothing
-            )
-
-
 updateSnake : Game -> Direction -> Snake
 updateSnake game dir =
     if List.head game.snake == game.apple then
