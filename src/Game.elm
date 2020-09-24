@@ -70,11 +70,10 @@ updateGame : Direction -> Game -> Maybe Game
 updateGame dir game =
     if not <| gameOver game then
         Just
-            (updateApple <|
-                { game
-                    | snake = updateSnake dir game
-                    , direction = updateDir dir game.direction
-                }
+            (game
+                |> (\g -> { g | direction = updateDir dir g.direction })
+                |> (\g -> { g | snake = updateSnake g })
+                |> updateApple
             )
 
     else
@@ -83,16 +82,16 @@ updateGame dir game =
 
 updateApple : Game -> Game
 updateApple game =
-    if eatingApple game then
+    if eatingApple game.apple game.snake then
         stepApple game
 
     else
         game
 
 
-eatingApple : Game -> Bool
-eatingApple game =
-    List.head game.snake == Just game.apple
+eatingApple : Coord -> Snake -> Bool
+eatingApple coord snake =
+    List.head snake == Just coord
 
 
 stepApple : Game -> Game
@@ -115,26 +114,17 @@ genCoord =
         (Random.int 1 58)
 
 
-updateSnake : Direction -> Game -> Snake
-updateSnake dir game =
+updateSnake : Game -> Snake
+updateSnake game =
     let
-        newGame =
-            { game | snake = newSnakePos dir game }
+        newSnake =
+            moveSnake game.direction game.snake
     in
-    if eatingApple newGame then
-        growSnake dir newGame.snake
+    if eatingApple game.apple newSnake then
+        growSnake game.direction newSnake
 
     else
-        newGame.snake
-
-
-newSnakePos : Direction -> Game -> Snake
-newSnakePos newDir game =
-    if game.direction == newDir || game.direction == oppositeDirection newDir then
-        moveSnake game.direction game.snake
-
-    else
-        moveSnake newDir game.snake
+        newSnake
 
 
 gameOver : Game -> Bool
