@@ -127,45 +127,40 @@ intersecting b1 b2 =
 
 growSnake : Game -> Snake
 growSnake game =
-    case List.head game.snake of
-        Just head ->
-            case game.direction of
-                Up ->
-                    case LE.last game.snake of
-                        Just t ->
-                            game.snake ++ [ { t | y = t.y + 1 } ]
+    case game.direction of
+        Up ->
+            case LE.last game.snake of
+                Just t ->
+                    game.snake ++ [ { t | y = t.y + 1 } ]
 
-                        Nothing ->
-                            game.snake
-
-                Down ->
-                    case LE.last game.snake of
-                        Just t ->
-                            game.snake ++ [ { t | y = t.y - 1 } ]
-
-                        Nothing ->
-                            game.snake
-
-                Left ->
-                    case LE.last game.snake of
-                        Just t ->
-                            game.snake ++ [ { t | x = t.x + 1 } ]
-
-                        Nothing ->
-                            game.snake
-
-                Right ->
-                    case LE.last game.snake of
-                        Just t ->
-                            game.snake ++ [ { t | x = t.x - 1 } ]
-
-                        Nothing ->
-                            game.snake
-
-                _ ->
+                Nothing ->
                     game.snake
 
-        Nothing ->
+        Down ->
+            case LE.last game.snake of
+                Just t ->
+                    game.snake ++ [ { t | y = t.y - 1 } ]
+
+                Nothing ->
+                    game.snake
+
+        Left ->
+            case LE.last game.snake of
+                Just t ->
+                    game.snake ++ [ { t | x = t.x + 1 } ]
+
+                Nothing ->
+                    game.snake
+
+        Right ->
+            case LE.last game.snake of
+                Just t ->
+                    game.snake ++ [ { t | x = t.x - 1 } ]
+
+                Nothing ->
+                    game.snake
+
+        _ ->
             game.snake
 
 
