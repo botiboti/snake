@@ -1,7 +1,6 @@
 module Draw exposing (..)
 
 import Color
-import Debug
 import Game exposing (..)
 import Html exposing (..)
 import Snake exposing (..)
@@ -58,7 +57,7 @@ borders =
     ]
 
 
-drawBone : Int -> Int -> Int -> Backbone -> Svg msg
+drawBone : Int -> Int -> Int -> Coord -> Svg msg
 drawBone r g b bb =
     let
         col =
@@ -79,7 +78,7 @@ drawSnake snake =
     List.map (\bb -> drawBone 100 100 100 bb) snake
 
 
-drawApple : Maybe Backbone -> List (Svg msg)
+drawApple : Maybe Coord -> List (Svg msg)
 drawApple apple =
     case apple of
         Just app ->
@@ -91,13 +90,10 @@ drawApple apple =
 
 view : Game -> Html Msg
 view game =
-    div [] <|
-        [ Html.text <| "Score: " ++ (Debug.toString <| List.length game.snake) ]
-            ++ [ svg
-                    [ viewBox -1 -1 100 100 ]
-                 <|
-                    [ bg ]
-                        ++ drawSnake game.snake
-                        ++ drawApple game.apple
-                        ++ borders
-               ]
+    svg
+        [ viewBox -1 -1 100 100 ]
+    <|
+        [ bg ]
+            ++ drawSnake game.snake
+            ++ drawApple game.apple
+            ++ borders

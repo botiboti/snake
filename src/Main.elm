@@ -1,7 +1,5 @@
 module Main exposing (..)
 
---import Html.Attributes exposing (height, width)
-
 import Browser
 import Draw exposing (..)
 import Game exposing (..)

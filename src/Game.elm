@@ -1,7 +1,6 @@
 module Game exposing (..)
 
 import Browser.Events as Events
-import Debug
 import Dict exposing (intersect, keys)
 import Html exposing (..)
 import Json.Decode as Decode
@@ -27,7 +26,7 @@ type alias Game =
     { snake : Snake
     , direction : Direction
     , gameOver : Bool
-    , apple : Maybe Backbone
+    , apple : Maybe Coord
     }
 
 
@@ -36,7 +35,7 @@ initGame =
     { snake = initSnake
     , direction = Right
     , gameOver = False
-    , apple = Just (Backbone 0 0)
+    , apple = Just (Coord 0 0)
     }
 
 
@@ -48,7 +47,7 @@ init () =
 type Msg
     = Tick Time.Posix
     | KeyDowns Direction
-    | Spawn Backbone
+    | Spawn Coord
 
 
 update : Msg -> Game -> ( Game, Cmd Msg )
@@ -62,9 +61,9 @@ update msg game =
                 ( { snake = updateSnake game game.direction
                   , direction = game.direction
                   , gameOver = game.gameOver
-                  , apple = checkApple game
+                  , apple = eatingApple game
                   }
-                , case checkApple game of
+                , case eatingApple game of
                     Nothing ->
                         Random.generate Spawn apple
 
@@ -73,29 +72,25 @@ update msg game =
                 )
 
         KeyDowns dir ->
-            if gameOver game dir then
-                init ()
+            ( { snake = updateSnake game dir
+              , direction = updateDir game dir
+              , gameOver = game.gameOver
+              , apple = eatingApple game
+              }
+            , case eatingApple game of
+                Nothing ->
+                    Random.generate Spawn apple
 
-            else
-                ( { snake = updateSnake game dir
-                  , direction = updateDir game dir
-                  , gameOver = game.gameOver
-                  , apple = checkApple game
-                  }
-                , case checkApple game of
-                    Nothing ->
-                        Random.generate Spawn apple
-
-                    _ ->
-                        Cmd.none
-                )
+                _ ->
+                    Cmd.none
+            )
 
         Spawn bb ->
             ( { game | apple = Just bb }, Cmd.none )
 
 
-checkApple : Game -> Maybe Backbone
-checkApple game =
+eatingApple : Game -> Maybe Coord
+eatingApple game =
     if intersecting (List.head game.snake) game.apple then
         Nothing
 
@@ -103,10 +98,10 @@ checkApple game =
         game.apple
 
 
-apple : Random.Generator Backbone
+apple : Random.Generator Coord
 apple =
     Random.map2
-        (\x y -> Backbone x y)
+        (\x y -> Coord x y)
         (Random.int 1 58)
         (Random.int 1 58)
 
@@ -120,11 +115,11 @@ updateDir game dir =
         dir
 
 
-intersecting : Maybe Backbone -> Maybe Backbone -> Bool
+intersecting : Maybe Coord -> Maybe Coord -> Bool
 intersecting b1 b2 =
     case ( b1, b2 ) of
-        ( Just first, Just second ) ->
-            first.x == second.x && first.y == second.y
+        ( Just first_bone, Just second_bone ) ->
+            first_bone.x == second_bone.x && first_bone.y == second_bone.y
 
         _ ->
             False
@@ -185,10 +180,6 @@ updateSnake game dir =
 
 newSnakePos : Game -> Direction -> Snake
 newSnakePos game new_dir =
-    {-
-       if direction is the same or the opposite of the current direction
-       it remains the same
-    -}
     if game.direction == new_dir || game.direction == oppositeDirection new_dir then
         changeDirection game game.direction
 
@@ -244,39 +235,16 @@ collisionBorder : Game -> Bool
 collisionBorder game =
     let
         head =
-            List.head game.snake
+            Maybe.withDefault (Coord 0 0) (List.head game.snake)
     in
-    case head of
-        Just bb ->
-            case ( bb.x, bb.y ) of
-                ( 0, _ ) ->
-                    True
-
-                ( 59, _ ) ->
-                    True
-
-                ( _, 0 ) ->
-                    True
-
-                ( _, 59 ) ->
-                    True
-
-                _ ->
-                    False
-
-        Nothing ->
-            True
+    head.x <= 0 || head.x >= 59 || head.y <= 0 || head.y >= 59
 
 
 bitingTail : Game -> Direction -> Bool
 bitingTail game dir =
-    let
-        head =
-            List.head game.snake
-    in
     case List.tail game.snake of
         Just tail ->
-            List.any (\x -> intersecting head (Just x)) tail
+            List.any (\x -> intersecting (List.head game.snake) (Just x)) tail
 
         Nothing ->
             True

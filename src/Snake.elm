@@ -3,17 +3,17 @@ module Snake exposing (..)
 
 initSnake : Snake
 initSnake =
-    [ Backbone 7 5
-    , Backbone 6 5
-    , Backbone 5 5
+    [ Coord 7 5
+    , Coord 6 5
+    , Coord 5 5
     ]
 
 
-type alias Backbone =
+type alias Coord =
     { x : Int
     , y : Int
     }
 
 
 type alias Snake =
-    List Backbone
+    List Coord
