@@ -79,8 +79,8 @@ growSnake dir snake =
            )
 
 
-changeDirection : Direction -> Snake -> Snake
-changeDirection dir snake =
+moveSnake : Direction -> Snake -> Snake
+moveSnake dir snake =
     case ( List.head snake, LE.init snake ) of
         ( Just head, Just body ) ->
             adjacent dir head :: body

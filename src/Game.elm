@@ -34,31 +34,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
-        ( Tick _, Just game ) ->
-            if gameOver game then
-                init ()
-
-            else
-                ( Just
-                    ({ game
-                        | snake = updateSnake game.direction game
-                     }
-                        |> updateApple
-                    )
-                , Cmd.none
-                )
-
-        ( KeyDowns dir, Just game ) ->
-            ( Just
-                ({ game
-                    | snake = updateSnake dir game
-                    , direction = updateDir dir game.direction
-                 }
-                    |> updateApple
-                )
-            , Cmd.none
-            )
-
         ( Seed seed, Nothing ) ->
             ( Just
                 ({ snake = initSnake
@@ -71,8 +46,34 @@ update msg model =
             , Cmd.none
             )
 
+        ( _, Just game ) ->
+            if gameOver game then
+                init ()
+
+            else
+                ( case msg of
+                    Tick _ ->
+                        Just (updateGame game.direction game)
+
+                    KeyDowns dir ->
+                        Just (updateGame dir game)
+
+                    _ ->
+                        model
+                , Cmd.none
+                )
+
         _ ->
-            ( model, Cmd.none )
+            init ()
+
+
+updateGame : Direction -> Game -> Game
+updateGame dir game =
+    { game
+        | snake = updateSnake dir game
+        , direction = updateDir dir game.direction
+    }
+        |> updateApple
 
 
 updateApple : Game -> Game
@@ -111,20 +112,24 @@ genCoord =
 
 updateSnake : Direction -> Game -> Snake
 updateSnake dir game =
-    if eatingApple game then
-        newSnakePos dir { game | snake = growSnake dir game.snake }
+    let
+        newGame =
+            { game | snake = newSnakePos dir game }
+    in
+    if eatingApple newGame then
+        growSnake dir newGame.snake
 
     else
-        newSnakePos dir game
+        newGame.snake
 
 
 newSnakePos : Direction -> Game -> Snake
 newSnakePos newDir game =
     if game.direction == newDir || game.direction == oppositeDirection newDir then
-        changeDirection game.direction game.snake
+        moveSnake game.direction game.snake
 
     else
-        changeDirection newDir game.snake
+        moveSnake newDir game.snake
 
 
 gameOver : Game -> Bool
