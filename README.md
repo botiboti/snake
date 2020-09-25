@@ -12,4 +12,4 @@ Add buffs
 
 Cleaning up...
 
-[try](https://github.com/botiboti/snake/src/Main.elm)
+[try](https://github.botiboti.io/snake/)
