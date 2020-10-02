@@ -15,6 +15,7 @@ type alias Model =
 type alias Game =
     { snake : Snake
     , direction : Direction
+    , nextDirection : Direction
     , apple : Coord
     , seed : Random.Seed
     }
@@ -33,6 +34,7 @@ initGame seed =
     in
     { snake = initSnake
     , direction = Right
+    , nextDirection = Right
     , apple = apple
     , seed = seed_
     }
@@ -50,34 +52,42 @@ update msg model =
         ( Seed seed, Nothing ) ->
             ( Just (initGame seed), Cmd.none )
 
-        ( _, Just game ) ->
-            let
-                newDir =
-                    case msg of
-                        KeyDowns dir ->
-                            dir
+        ( Tick _, Just game ) ->
+            ( updateGame game, Cmd.none )
 
-                        _ ->
-                            game.direction
-            in
-            ( updateGame newDir game, Cmd.none )
+        ( KeyDowns newdir, Just game ) ->
+            ( updateMove newdir game, Cmd.none )
 
         _ ->
             init ()
 
 
-updateGame : Direction -> Game -> Maybe Game
-updateGame dir game =
+updateGame : Game -> Maybe Game
+updateGame game =
     if not <| gameOver game then
         Just
             (game
-                |> (\g -> { g | direction = updateDir dir g.direction })
-                |> (\g -> { g | snake = updateSnake g })
+                |> (\g -> { g | direction = game.nextDirection })
+                |> (\g -> { g | snake = updateSnake game })
                 |> updateApple
             )
 
     else
         Nothing
+
+
+updateMove : Direction -> Game -> Maybe Game
+updateMove dir game =
+    if game.direction == game.nextDirection && game.nextDirection == dir then
+        game
+            |> (\g -> { g | nextDirection = updateDir dir g.direction })
+            |> updateGame
+
+    else
+        Just
+            (game
+                |> (\g -> { g | nextDirection = updateDir dir g.direction })
+            )
 
 
 updateApple : Game -> Game
@@ -154,6 +164,6 @@ snakeInside snake =
 subscriptions : a -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ Time.every 500 Tick
+        [ Time.every 250 Tick
         , Events.onKeyDown (Decode.map KeyDowns decodeDirectionKey)
         ]
